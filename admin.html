@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IDIL Admin - Premium Selection Theater</title>
-    <!-- React & Libraries -->
+    <title>IDIL Lottery - Immersive Premium</title>
+    <!-- React & Modern Stack -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,700;1,400&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     
     <script>
         tailwind.config = {
@@ -24,173 +24,196 @@
     </script>
 
     <style type="text/css">
-        .immersive-bg { background: radial-gradient(circle at center, #1A1608 0%, #050505 100%); }
-        .glass-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(212, 175, 55, 0.1); backdrop-filter: blur(16px); }
+        .immersive-bg { background: radial-gradient(circle at 70% 30%, #1A1608 0%, #050505 70%); }
+        .gold-glow { background: radial-gradient(circle, rgba(212, 175, 55, 0.1) 0%, transparent 70%); }
+        .glass-card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(212, 175, 55, 0.2); backdrop-filter: blur(12px); }
         .gold-gradient-btn { background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .gold-gradient-btn:hover { box-shadow: 0 0 30px rgba(212, 175, 55, 0.3); transform: translateY(-2px); }
-        body { background-color: #050505; color: #ffffff; margin: 0; }
+        .gold-gradient-btn:hover { box-shadow: 0 0 20px rgba(212, 175, 55, 0.4); transform: scale(1.01); }
+        body { background-color: #050505; color: #ffffff; margin: 0; overflow-x: hidden; }
     </style>
 </head>
 <body class="h-full">
     <div id="root" class="h-full"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        const { useState } = React;
 
-        function AdminApp() {
-            const [tickets, setTickets] = useState([]);
-            const [drawing, setDrawing] = useState(false);
-            const [winner, setWinner] = useState(null);
-            const [searchTerm, setSearchTerm] = useState('');
+        function App() {
+            const [authMode, setAuthMode] = useState('login');
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [message, setMessage] = useState(null);
 
-            // Supabase Setup
+            // Supabase Secure Configuration
             const SUPABASE_URL = 'https://otanrjusriyfatvbtzli.supabase.co/';
             const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90YW5yanVzcml5ZmF0dmJ0emxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NTI0NzcsImV4cCI6MjA5MjEyODQ3N30.sP64iGkSFn_9aM9hGJLvhyp04uj2NIiP3TVswKNUf5Q';
             const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-            useEffect(() => {
-                const fetchInitial = async () => {
-                    const { data, error } = await supabase.from('tickets').select('*');
-                    if (!error && data?.length > 0) {
-                        setTickets(data);
+            // UPDATED: Centralized Redirection Script
+            const handleRedirect = (userEmail) => {
+                if (userEmail === 'yonasmarga@gmail.com') {
+                    window.location.href = '/admin.html';
+                } else {
+                    window.location.href = '/dashboard.html';
+                }
+            };
+
+            const handleAuth = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setMessage(null);
+
+                try {
+                    let result;
+                    if (authMode === 'login') {
+                        result = await supabase.auth.signInWithPassword({ email, password });
+                        if (result.error) throw result.error;
+                        handleRedirect(result.data.user.email);
+                    } else if (authMode === 'signup') {
+                        result = await supabase.auth.signUp({ email, password });
+                        if (result.error) throw result.error;
+                        setMessage({ type: 'success', text: 'Membership requested. Please verify your email.' });
                     } else {
-                        // Demo Fallback
-                        const mock = Array.from({length: 2000}).map((_, i) => ({
-                            id: i,
-                            ticket_number: `IDIL-${200000 + i}`,
-                            owner_email: `member_${i}@premium.idil`,
-                            status: 'active'
-                        }));
-                        setTickets(mock);
+                        result = await supabase.auth.resetPasswordForEmail(email);
+                        if (result.error) throw result.error;
+                        setMessage({ type: 'success', text: 'Password reset link dispatched.' });
                     }
-                };
-                fetchInitial();
-            }, []);
+                } catch (err) {
+                    setMessage({ type: 'error', text: err.message });
+                } finally {
+                    setLoading(false);
+                }
+            };
 
-            const filteredTickets = useMemo(() => {
-                return tickets.filter(t => 
-                    t.ticket_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    t.owner_email.toLowerCase().includes(searchTerm.toLowerCase())
-                );
-            }, [tickets, searchTerm]);
-
-            const handleDraw = () => {
-                if (tickets.length === 0) return;
-                setDrawing(true);
-                setWinner(null);
-                setTimeout(() => {
-                    const lucky = tickets[Math.floor(Math.random() * tickets.length)];
-                    setWinner(lucky);
-                    setDrawing(false);
-                }, 3500);
+            const handleGoogleLogin = async () => {
+                 setLoading(true);
+                 const { error } = await supabase.auth.signInWithOAuth({ 
+                    provider: 'google',
+                    options: { 
+                        // Redirect URI should handle the email check via a middle-man or common dashboard
+                        redirectTo: window.location.origin + '/dashboard.html' 
+                    }
+                 });
+                 if(error) alert(error.message);
+                 setLoading(false);
             };
 
             return (
-                <div className="min-h-screen immersive-bg p-8 lg:p-16 antialiased">
-                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 border-b border-white/5 pb-12">
-                        <div>
-                            <h1 className="font-serif text-4xl md:text-5xl text-gold mb-2">Executive Portal</h1>
-                            <p className="text-white/40 text-sm tracking-widest uppercase italic font-light italic-font">IDIL favors the prepared mind.</p>
-                        </div>
-                        <div className="flex gap-4">
-                            <div className="glass-card px-6 py-3 rounded-xl">
-                                <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Total Entries</p>
-                                <p className="text-2xl font-serif text-white">{tickets.length}</p>
-                            </div>
-                            <button 
-                                onClick={handleDraw}
-                                disabled={drawing}
-                                className="gold-gradient-btn px-10 py-4 rounded-xl text-black font-bold uppercase text-xs tracking-[0.2em] flex items-center gap-3 disabled:opacity-50"
-                            >
-                                {drawing ? "Analyzing Entropy..." : "Draw Grand Prize"}
-                            </button>
-                        </div>
-                    </header>
+                <div className="min-h-screen immersive-bg relative flex flex-col lg:flex-row antialiased h-full">
+                    {/* Atmospheric Glow */}
+                    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+                        <div className="gold-glow absolute w-[600px] h-[600px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 blur-[100px] opacity-30"></div>
+                    </div>
 
-                    <main className="grid grid-cols-1 xl:grid-cols-3 gap-12">
-                        {/* Ticket Inventory */}
-                        <section className="xl:col-span-2 space-y-8">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <h3 className="text-xl font-serif text-white flex items-center gap-3">
-                                    Member Inventory <span className="text-xs text-gold/40 font-sans tracking-widest">({filteredTickets.length})</span>
-                                </h3>
-                                <input 
-                                    placeholder="Search by ID or Email..."
-                                    className="bg-white/5 border border-white/10 rounded-full px-6 py-2.5 text-xs text-white focus:outline-none focus:border-gold/30 w-full md:w-80"
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
+                    <div className="absolute top-10 right-10 z-50">
+                        <div className="bg-gold/10 border border-gold px-4 py-1.5 rounded-full text-[10px] uppercase tracking-widest text-gold font-bold shadow-[0_0_15px_rgba(212,175,55,0.2)]">
+                            Next Draw: 24h 12m
+                        </div>
+                    </div>
 
-                            <div className="glass-card rounded-2xl overflow-hidden">
-                                <div className="max-h-[600px] overflow-y-auto scrollbar-hide">
-                                    <table className="w-full text-left">
-                                        <thead className="sticky top-0 bg-black/90 text-[10px] text-white/30 uppercase tracking-widest border-b border-white/5">
-                                            <tr>
-                                                <th className="px-8 py-4">Ticket Serial</th>
-                                                <th className="px-8 py-4">Participant Detail</th>
-                                                <th className="px-8 py-4 text-right">Verification</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-white/5">
-                                            {filteredTickets.slice(0, 100).map(t => (
-                                                <tr key={t.id} className="group hover:bg-gold/[0.02]">
-                                                    <td className="px-8 py-5 font-mono text-xs text-gold">{t.ticket_number}</td>
-                                                    <td className="px-8 py-5 text-sm text-white/60">{t.owner_email}</td>
-                                                    <td className="px-8 py-5 text-right font-mono text-[10px] text-white/20 group-hover:text-emerald-500/40">SECURED</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                {filteredTickets.length > 100 && (
-                                    <div className="p-4 bg-black/50 text-center text-[10px] text-white/20 uppercase tracking-widest">
-                                        Showing top 100 entries for performance
+                    <main className="flex-1 px-8 md:px-16 py-12 md:py-24 z-10 flex flex-col justify-between max-w-4xl mx-auto lg:mx-0">
+                        <header className="mb-16">
+                            <div className="flex items-center gap-3 mb-6">
+                                <h1 className="font-serif text-5xl md:text-7xl text-gold tracking-tight drop-shadow-[0_0_20px_rgba(212,175,55,0.3)]">
+                                    IDIL Lottery
+                                </h1>
+                            </div>
+                            <p className="border-l-2 border-gold pl-4 text-white/60 text-lg italic italic-font">
+                                "IDIL favors the prepared mind."
+                            </p>
+                        </header>
+
+                        <section className="prize-board flex-grow">
+                            <h2 className="text-[11px] uppercase tracking-[0.3em] font-bold text-white/40 mb-8">Active Tiers</h2>
+                            <div className="space-y-4 max-w-xl">
+                                {[
+                                    { rank: '1st Tier', value: 'New Car', detail: 'Model 2024 Luxury Edition' },
+                                    { rank: '2nd Tier', value: '150,000 Birr', detail: 'Instant Cash Prize' },
+                                    { rank: '3rd Tier', value: '50,000 Birr', detail: 'Digital Transfer' }
+                                ].map((prize) => (
+                                    <div key={prize.rank} className="glass-card p-6 flex items-center transition-all duration-500 rounded-xl hover:border-gold/40">
+                                        <div className="w-20 text-[10px] uppercase tracking-widest font-bold text-gold">{prize.rank}</div>
+                                        <div className="flex-grow">
+                                            <div className="text-2xl font-semibold text-white">{prize.value}</div>
+                                            <div className="text-sm text-white/50">{prize.detail}</div>
+                                        </div>
                                     </div>
-                                )}
+                                ))}
                             </div>
                         </section>
 
-                        {/* Theater Section */}
-                        <aside className="space-y-8">
-                            <h3 className="text-xl font-serif text-white">Selection Theater</h3>
-                            <div className="glass-card rounded-[2.5rem] aspect-square flex flex-col items-center justify-center text-center p-12 relative overflow-hidden">
-                                {drawing ? (
-                                    <div className="space-y-6">
-                                        <div className="w-20 h-20 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                                        <p className="font-serif text-2xl text-gold animate-pulse">Scanning Karma...</p>
-                                    </div>
-                                ) : winner ? (
-                                    <div className="relative z-10 space-y-8">
-                                        <svg className="w-16 h-16 text-gold mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z" />
-                                        </svg>
-                                        <div>
-                                            <p className="text-[10px] uppercase font-bold text-gold tracking-widest mb-1">IDIL Selected</p>
-                                            <h4 className="text-5xl font-serif text-white">{winner.ticket_number}</h4>
-                                        </div>
-                                        <div className="pt-8 border-t border-white/10 w-full">
-                                            <p className="text-white/40 text-[10px] uppercase mb-1">Verified Member</p>
-                                            <p className="text-white text-sm">{winner.owner_email}</p>
-                                        </div>
-                                        <button onClick={() => setWinner(null)} className="text-[10px] text-white/20 hover:text-white uppercase tracking-widest underline underline-offset-4">Reset Theater</button>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4 opacity-30">
-                                        <svg className="w-12 h-12 text-white/20 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                        <p className="text-sm italic">"Justice is absolute; Karma is calculated."</p>
+                        <footer className="mt-24 text-[11px] text-white/40 uppercase tracking-widest font-medium">
+                            &copy; 2026 IDIL Premium Lottery Systems.
+                        </footer>
+                    </main>
+
+                    <aside className="w-full lg:w-[500px] xl:w-[550px] px-8 md:px-16 py-12 md:py-24 z-10 flex items-center justify-center bg-black/40 lg:bg-transparent backdrop-blur-sm lg:backdrop-blur-none border-t lg:border-t-0 lg:border-l border-white/5">
+                        <div className="w-full max-w-md bg-black/80 border border-white/10 rounded-[2rem] p-10 shadow-2xl backdrop-blur-xl relative">
+                            <div className="text-center mb-10">
+                                <h2 className="text-2xl font-semibold mb-2 text-white">
+                                    {authMode === 'login' ? 'Enter the Draw' : authMode === 'signup' ? 'Create Membership' : 'Reset Password'}
+                                </h2>
+                                <p className="text-white/40 text-sm italic">Access the high-stakes IDIL ecosystem.</p>
+                            </div>
+
+                            <button onClick={handleGoogleLogin} className="w-full bg-white hover:bg-gray-100 text-black font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-3 text-sm shadow-lg mb-8">
+                                <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.91a8.78 8.78 0 0 0 2.69-6.62z" fill="#4285F4"/><path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.8.54-1.83.85-3.05.85-2.35 0-4.33-1.58-5.04-3.71H.95v2.33A9 9 0 0 0 9 18z" fill="#34A853"/><path d="M3.96 10.7a5.4 5.4 0 0 1 0-3.4V4.97H.95a9 9 0 0 0 0 8.06l3.01-2.33z" fill="#FBBC05"/><path d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15.02 2.3A8.93 8.93 0 0 0 9 0 9 9 0 0 0 .95 4.97l3.01 2.33c.71-2.13 2.69-3.71 5.04-3.71z" fill="#EA4335"/></svg>
+                                Sign in with Google
+                            </button>
+
+                            <div className="relative flex items-center mb-8">
+                                <div className="flex-grow h-px bg-white/5"></div>
+                                <span className="flex-shrink mx-4 text-[10px] text-white/30 uppercase tracking-[0.2em]">or via secure email</span>
+                                <div className="flex-grow h-px bg-white/5"></div>
+                            </div>
+
+                            <form onSubmit={handleAuth} className="space-y-6">
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] uppercase tracking-widest text-white/50 font-medium ml-1">Email Address</label>
+                                    <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl py-4 px-4 focus:outline-none focus:border-gold/50 focus:bg-white/[0.08] transition-all text-sm text-white" placeholder="yonasmarga@gmail.com" />
+                                </div>
+
+                                {authMode !== 'forgot' && (
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] uppercase tracking-widest text-white/50 font-medium ml-1">Secure Password</label>
+                                        <input type="password" required={authMode !== 'forgot'} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl py-4 px-4 focus:outline-none focus:border-gold/50 focus:bg-white/[0.08] transition-all text-sm text-white" placeholder="••••••••" />
                                     </div>
                                 )}
-                                {/* Decorative elements */}
-                                <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,_rgba(212,175,55,0.05)_0%,_transparent_70%)]"></div>
+
+                                {message && (
+                                    <div className={`p-4 rounded-xl text-xs ${message.type === 'error' ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-500"}`}>
+                                        {message.text}
+                                    </div>
+                                )}
+
+                                <button disabled={loading} className="w-full gold-gradient-btn text-black font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(212,175,55,0.2)] text-xs uppercase tracking-[0.15em] active:scale-[0.98] transition-all">
+                                    {loading ? "Verifying..." : (authMode === 'login' ? 'Secure Login' : authMode === 'signup' ? 'Request Membership' : 'Reset Link')}
+                                </button>
+                            </form>
+
+                            <div className="mt-8 text-center space-y-3">
+                                {authMode === 'login' ? (
+                                    <>
+                                        <button onClick={() => setAuthMode('forgot')} className="text-white/40 text-[10px] uppercase tracking-widest hover:text-gold border-none bg-transparent cursor-pointer">Forgot Password?</button>
+                                        <p className="text-white/40 text-xs">
+                                            Don't have an account? <button onClick={() => setAuthMode('signup')} className="text-gold font-medium border-none bg-transparent cursor-pointer">Create Membership</button>
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="text-white/40 text-xs">
+                                        Already a member? <button onClick={() => setAuthMode('login')} className="text-gold font-medium border-none bg-transparent cursor-pointer">Sign in here</button>
+                                    </p>
+                                )}
                             </div>
-                        </aside>
-                    </main>
+                        </div>
+                    </aside>
                 </div>
             );
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<AdminApp />);
+        root.render(<App />);
     </script>
 </body>
 </html>
