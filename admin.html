@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDIL Admin - Premium Selection Theater</title>
+    <!-- React & Libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { serif: ['"Cormorant Garamond"', 'serif'], sans: ['Inter', 'sans-serif'] },
+                    colors: { gold: { DEFAULT: '#D4AF37', bright: '#F4DF4E', dark: '#B8860B' } }
+                }
+            }
+        }
+    </script>
+
+    <style type="text/css">
+        .immersive-bg { background: radial-gradient(circle at center, #1A1608 0%, #050505 100%); }
+        .glass-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(212, 175, 55, 0.1); backdrop-filter: blur(16px); }
+        .gold-gradient-btn { background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .gold-gradient-btn:hover { box-shadow: 0 0 30px rgba(212, 175, 55, 0.3); transform: translateY(-2px); }
+        body { background-color: #050505; color: #ffffff; margin: 0; }
+    </style>
+</head>
+<body class="h-full">
+    <div id="root" class="h-full"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        function AdminApp() {
+            const [tickets, setTickets] = useState([]);
+            const [drawing, setDrawing] = useState(false);
+            const [winner, setWinner] = useState(null);
+            const [searchTerm, setSearchTerm] = useState('');
+
+            // Supabase Setup
+            const SUPABASE_URL = 'https://otanrjusriyfatvbtzli.supabase.co/';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90YW5yanVzcml5ZmF0dmJ0emxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NTI0NzcsImV4cCI6MjA5MjEyODQ3N30.sP64iGkSFn_9aM9hGJLvhyp04uj2NIiP3TVswKNUf5Q';
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+            useEffect(() => {
+                const fetchInitial = async () => {
+                    const { data, error } = await supabase.from('tickets').select('*');
+                    if (!error && data?.length > 0) {
+                        setTickets(data);
+                    } else {
+                        // Demo Fallback
+                        const mock = Array.from({length: 2000}).map((_, i) => ({
+                            id: i,
+                            ticket_number: `IDIL-${200000 + i}`,
+                            owner_email: `member_${i}@premium.idil`,
+                            status: 'active'
+                        }));
+                        setTickets(mock);
+                    }
+                };
+                fetchInitial();
+            }, []);
+
+            const filteredTickets = useMemo(() => {
+                return tickets.filter(t => 
+                    t.ticket_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    t.owner_email.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+            }, [tickets, searchTerm]);
+
+            const handleDraw = () => {
+                if (tickets.length === 0) return;
+                setDrawing(true);
+                setWinner(null);
+                setTimeout(() => {
+                    const lucky = tickets[Math.floor(Math.random() * tickets.length)];
+                    setWinner(lucky);
+                    setDrawing(false);
+                }, 3500);
+            };
+
+            return (
+                <div className="min-h-screen immersive-bg p-8 lg:p-16 antialiased">
+                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 border-b border-white/5 pb-12">
+                        <div>
+                            <h1 className="font-serif text-4xl md:text-5xl text-gold mb-2">Executive Portal</h1>
+                            <p className="text-white/40 text-sm tracking-widest uppercase italic font-light italic-font">IDIL favors the prepared mind.</p>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="glass-card px-6 py-3 rounded-xl">
+                                <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Total Entries</p>
+                                <p className="text-2xl font-serif text-white">{tickets.length}</p>
+                            </div>
+                            <button 
+                                onClick={handleDraw}
+                                disabled={drawing}
+                                className="gold-gradient-btn px-10 py-4 rounded-xl text-black font-bold uppercase text-xs tracking-[0.2em] flex items-center gap-3 disabled:opacity-50"
+                            >
+                                {drawing ? "Analyzing Entropy..." : "Draw Grand Prize"}
+                            </button>
+                        </div>
+                    </header>
+
+                    <main className="grid grid-cols-1 xl:grid-cols-3 gap-12">
+                        {/* Ticket Inventory */}
+                        <section className="xl:col-span-2 space-y-8">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <h3 className="text-xl font-serif text-white flex items-center gap-3">
+                                    Member Inventory <span className="text-xs text-gold/40 font-sans tracking-widest">({filteredTickets.length})</span>
+                                </h3>
+                                <input 
+                                    placeholder="Search by ID or Email..."
+                                    className="bg-white/5 border border-white/10 rounded-full px-6 py-2.5 text-xs text-white focus:outline-none focus:border-gold/30 w-full md:w-80"
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="glass-card rounded-2xl overflow-hidden">
+                                <div className="max-h-[600px] overflow-y-auto scrollbar-hide">
+                                    <table className="w-full text-left">
+                                        <thead className="sticky top-0 bg-black/90 text-[10px] text-white/30 uppercase tracking-widest border-b border-white/5">
+                                            <tr>
+                                                <th className="px-8 py-4">Ticket Serial</th>
+                                                <th className="px-8 py-4">Participant Detail</th>
+                                                <th className="px-8 py-4 text-right">Verification</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-white/5">
+                                            {filteredTickets.slice(0, 100).map(t => (
+                                                <tr key={t.id} className="group hover:bg-gold/[0.02]">
+                                                    <td className="px-8 py-5 font-mono text-xs text-gold">{t.ticket_number}</td>
+                                                    <td className="px-8 py-5 text-sm text-white/60">{t.owner_email}</td>
+                                                    <td className="px-8 py-5 text-right font-mono text-[10px] text-white/20 group-hover:text-emerald-500/40">SECURED</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {filteredTickets.length > 100 && (
+                                    <div className="p-4 bg-black/50 text-center text-[10px] text-white/20 uppercase tracking-widest">
+                                        Showing top 100 entries for performance
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        {/* Theater Section */}
+                        <aside className="space-y-8">
+                            <h3 className="text-xl font-serif text-white">Selection Theater</h3>
+                            <div className="glass-card rounded-[2.5rem] aspect-square flex flex-col items-center justify-center text-center p-12 relative overflow-hidden">
+                                {drawing ? (
+                                    <div className="space-y-6">
+                                        <div className="w-20 h-20 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                        <p className="font-serif text-2xl text-gold animate-pulse">Scanning Karma...</p>
+                                    </div>
+                                ) : winner ? (
+                                    <div className="relative z-10 space-y-8">
+                                        <svg className="w-16 h-16 text-gold mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z" />
+                                        </svg>
+                                        <div>
+                                            <p className="text-[10px] uppercase font-bold text-gold tracking-widest mb-1">IDIL Selected</p>
+                                            <h4 className="text-5xl font-serif text-white">{winner.ticket_number}</h4>
+                                        </div>
+                                        <div className="pt-8 border-t border-white/10 w-full">
+                                            <p className="text-white/40 text-[10px] uppercase mb-1">Verified Member</p>
+                                            <p className="text-white text-sm">{winner.owner_email}</p>
+                                        </div>
+                                        <button onClick={() => setWinner(null)} className="text-[10px] text-white/20 hover:text-white uppercase tracking-widest underline underline-offset-4">Reset Theater</button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4 opacity-30">
+                                        <svg className="w-12 h-12 text-white/20 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                        <p className="text-sm italic">"Justice is absolute; Karma is calculated."</p>
+                                    </div>
+                                )}
+                                {/* Decorative elements */}
+                                <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,_rgba(212,175,55,0.05)_0%,_transparent_70%)]"></div>
+                            </div>
+                        </aside>
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<AdminApp />);
+    </script>
+</body>
+</html>
