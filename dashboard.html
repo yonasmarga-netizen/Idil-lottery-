@@ -1,1 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDIL Member Dashboard - Premium Selection</title>
+    <!-- React & Modern Tech Stack -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { serif: ['"Cormorant Garamond"', 'serif'], sans: ['Inter', 'sans-serif'] },
+                    colors: { gold: { DEFAULT: '#D4AF37', bright: '#F4DF4E', dark: '#B8860B' } },
+                    gridTemplateColumns: { '20': 'repeat(20, minmax(0, 1fr))' }
+                }
+            }
+        }
+    </script>
 
+    <style type="text/css">
+        .immersive-bg { background: radial-gradient(circle at center, #1A1608 0%, #050505 100%); }
+        .glass-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(212, 175, 55, 0.1); backdrop-filter: blur(20px); }
+        .gold-gradient-btn { background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%); }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        body { background-color: #050505; color: #ffffff; margin: 0; overflow-x: hidden; }
+        .ticket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 6px; }
+    </style>
+</head>
+<body class="h-full">
+    <div id="root" class="h-full"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function DashboardApp() {
+            const [tickets, setTickets] = useState([]);
+            const [selectedId, setSelectedId] = useState(null);
+            const [user, setUser] = useState(null);
+            const [buying, setBuying] = useState(false);
+            const [message, setMessage] = useState(null);
+
+            // Using your specific Supabase credentials
+            const SUPABASE_URL = 'https://otanrjusriyfatvbtzli.supabase.co/';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90YW5yanVzcml5ZmF0dmJ0emxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NTI0NzcsImV4cCI6MjA5MjEyODQ3N30.sP64iGkSFn_9aM9hGJLvhyp04uj2NIiP3TVswKNUf5Q';
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+            useEffect(() => {
+                fetchData();
+                supabase.auth.getUser().then(({data}) => setUser(data.user));
+            }, []);
+
+            const fetchData = async () => {
+                const { data } = await supabase.from('tickets').select('ticket_number');
+                const taken = new Set(data?.map(t => t.ticket_number) || []);
+                
+                const pool = Array.from({length: 2000}).map((_, i) => {
+                    const id = `IDIL-${200000 + i}`;
+                    return { id, isTaken: taken.has(id), display: (200000 + i).toString().slice(-3) };
+                });
+                setTickets(pool);
+            };
+
+            const handlePurchase = async () => {
+                if (!selectedId || !user) return alert("Please select a ticket and ensure you are logged in.");
+                setBuying(true);
+                const { error } = await supabase.from('tickets').insert([
+                    { ticket_number: selectedId, owner_email: user.email, owner_id: user.id }
+                ]);
+
+                if (error) {
+                    setMessage({ type: 'error', text: "Ticket already secured by another member." });
+                } else {
+                    setMessage({ type: 'success', text: "Purchase successful. Authenticating ticket..." });
+                    setSelectedId(null);
+                    fetchData();
+                }
+                setBuying(false);
+            };
+
+            return (
+                <div className="min-h-screen immersive-bg p-6 lg:p-12 antialiased">
+                    <header className="mb-12 border-b border-white/5 pb-8 flex justify-between items-end">
+                        <div className="space-y-2">
+                            <h1 className="font-serif text-4xl text-gold">Marketplace</h1>
+                            <p className="text-white/30 text-[10px] uppercase tracking-[0.4em]">Selection Phase: Active</p>
+                        </div>
+                        <div className="hidden md:flex gap-6 text-[9px] uppercase tracking-widest font-bold">
+                            <div className="flex items-center gap-2"><div className="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]"></div><span className="text-emerald-500/80">Available</span></div>
+                            <div className="flex items-center gap-2"><div className="w-2 h-2 bg-red-500/30 rounded-full"></div><span className="text-white/20">Secured</span></div>
+                        </div>
+                    </header>
+
+                    <div className="flex flex-col xl:flex-row gap-12 h-[calc(100vh-250px)]">
+                        {/* 2000 Ticket Grid */}
+                        <section className="flex-1 glass-card rounded-[2.5rem] p-8 overflow-hidden flex flex-col">
+                            <h3 className="text-xl font-serif text-white mb-6">Inventory Pool (2,000)</h3>
+                            <div className="flex-1 overflow-y-auto scrollbar-hide pr-2">
+                                <div className="ticket-grid">
+                                    {tickets.map(t => (
+                                        <button 
+                                            key={t.id}
+                                            disabled={t.isTaken}
+                                            onClick={() => setSelectedId(t.id)}
+                                            className={`aspect-square rounded flex items-center justify-center text-[7px] font-bold border transition-all duration-300 ${
+                                                t.isTaken 
+                                                ? 'bg-red-500/5 border-red-500/10 text-red-500/20 cursor-not-allowed' 
+                                                : selectedId === t.id
+                                                    ? 'bg-gold text-black border-gold scale-110 shadow-[0_0_15px_rgba(212,175,55,0.4)] z-10'
+                                                    : 'bg-emerald-500/5 border-emerald-500/10 text-emerald-500/40 hover:bg-emerald-500/20 hover:text-emerald-500'
+                                            }`}
+                                        >
+                                            {t.display}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Purchase Sidebar */}
+                        <aside className="w-full xl:w-[400px] space-y-6">
+                            <div className="glass-card rounded-[2.5rem] p-10 h-full flex flex-col justify-between">
+                                <div className="space-y-10">
+                                    <div className="space-y-2">
+                                        <p className="text-white/40 text-[10px] uppercase tracking-widest">Entry Serial</p>
+                                        <h4 className="text-3xl font-mono text-gold">{selectedId || "None Selected"}</h4>
+                                    </div>
+
+                                    <div className="space-y-4 pt-10 border-t border-white/5">
+                                        <div className="flex justify-between text-xs"><span className="text-white/40 font-light">Draw Tier</span><span className="text-white">Premium Grand</span></div>
+                                        <div className="flex justify-between text-xs"><span className="text-white/40 font-light">Authorization</span><span className="text-emerald-500">PENDING</span></div>
+                                        <div className="flex justify-between text-xl font-serif pt-4"><span className="text-white">Amount Due</span><span className="text-gold">1,000 ETB</span></div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-6">
+                                    {message && (
+                                        <div className={`p-4 rounded-xl text-center text-[10px] transition-all ${message.type === 'error' ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                            {message.text}
+                                        </div>
+                                    )}
+                                    <button 
+                                        disabled={buying || !selectedId}
+                                        onClick={handlePurchase}
+                                        className="w-full gold-gradient-btn py-5 rounded-2xl text-black font-bold uppercase text-[10px] tracking-[0.2em] shadow-[0_0_25px_rgba(212,175,55,0.2)] active:scale-[0.98] disabled:opacity-30 transition-all"
+                                    >
+                                        {buying ? "Syncing..." : "Commit Purchase"}
+                                    </button>
+                                    <p className="text-[9px] text-center text-white/20 italic">Encrypted Secure Purchase via IDIL Premium Systems</p>
+                                </div>
+                            </div>
+                        </aside>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<DashboardApp />);
+    </script>
+</body>
+</html>
