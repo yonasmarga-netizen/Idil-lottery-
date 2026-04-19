@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDIL Lottery - Immersive Premium</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { serif: ['"Cormorant Garamond"', 'serif'], sans: ['Inter', 'sans-serif'] },
+                    colors: { gold: { DEFAULT: '#D4AF37', bright: '#F4DF4E', dark: '#B8860B' } }
+                }
+            }
+        }
+    </script>
+    <style type="text/css">
+        .immersive-bg { background: radial-gradient(circle at 70% 30%, #1A1608 0%, #050505 70%); }
+        .gold-glow { background: radial-gradient(circle, rgba(212, 175, 55, 0.1) 0%, transparent 70%); }
+        .glass-card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(212, 175, 55, 0.2); backdrop-filter: blur(12px); }
+        .gold-gradient-btn { background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%); }
+        body { background-color: #050505; color: #ffffff; margin: 0; overflow-x: hidden; }
+    </style>
+</head>
+<body class="h-full">
+    <div id="root" class="h-full"></div>
+    <script type="text/babel">
+        const { useState } = React;
+
+        function App() {
+            const [authMode, setAuthMode] = useState('login');
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [message, setMessage] = useState(null);
+
+            const SUPABASE_URL = 'https://otanrjusriyfatvbtzli.supabase.co/';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90YW5yanVzcml5ZmF0dmJ0emxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NTI0NzcsImV4cCI6MjA5MjEyODQ3N30.sP64iGkSFn_9aM9hGJLvhyp04uj2NIiP3TVswKNUf5Q';
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+            const handleAuth = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setMessage(null);
+
+                try {
+                    if (authMode === 'login') {
+                        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                        if (error) throw error;
+                        
+                        // FIX: Actual redirection logic
+                        if (data.user.email === 'yonasmarga@gmail.com') {
+                            window.location.href = 'admin.html';
+                        } else {
+                            window.location.href = 'dashboard.html';
+                        }
+                    } else if (authMode === 'signup') {
+                        const { error } = await supabase.auth.signUp({ email, password });
+                        if (error) throw error;
+                        setMessage({ type: 'success', text: 'Membership requested. Please verify your email.' });
+                    }
+                } catch (err) {
+                    setMessage({ type: 'error', text: err.message });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleGoogleLogin = async () => {
+                 await supabase.auth.signInWithOAuth({ 
+                    provider: 'google',
+                    options: { redirectTo: window.location.origin + '/dashboard.html' }
+                 });
+            };
+
+            return (
+                <div className="min-h-screen immersive-bg relative flex flex-col lg:flex-row antialiased h-full p-8 md:p-16">
+                    <main className="flex-1 z-10 max-w-4xl">
+                        <header className="mb-16">
+                            <h1 className="font-serif text-5xl md:text-7xl text-gold tracking-tight mb-4">IDIL Lottery</h1>
+                            <p className="border-l-2 border-gold pl-4 text-white/60 italic">"IDIL favors the prepared mind."</p>
+                        </header>
+                        <section className="space-y-4 max-w-xl">
+                            <div className="glass-card p-6 rounded-xl"><div className="text-gold font-bold text-xs uppercase mb-2">1st Tier</div><div className="text-2xl">New Car - Luxury Edition</div></div>
+                            <div className="glass-card p-6 rounded-xl"><div className="text-gold font-bold text-xs uppercase mb-2">2nd Tier</div><div className="text-2xl">150,000 Birr</div></div>
+                        </section>
+                    </main>
+
+                    <aside className="w-full lg:w-[450px] z-10 flex items-center justify-center">
+                        <div className="w-full bg-black/80 border border-white/10 rounded-[2rem] p-10 shadow-2xl">
+                            <h2 className="text-2xl text-center mb-8">{authMode === 'login' ? 'Enter the Draw' : 'Create Membership'}</h2>
+                            <form onSubmit={handleAuth} className="space-y-6">
+                                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-white" placeholder="Email Address" />
+                                <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-white" placeholder="Password" />
+                                {message && <div className={`p-4 rounded-xl text-xs ${message.type === 'error' ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"}`}>{message.text}</div>}
+                                <button disabled={loading} className="w-full gold-gradient-btn text-black font-bold py-4 rounded-xl uppercase tracking-widest text-xs">
+                                    {loading ? "Processing..." : (authMode === 'login' ? 'Secure Login' : 'Sign Up')}
+                                </button>
+                            </form>
+                            <div className="mt-6 text-center">
+                                <button onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} className="text-gold text-xs">
+                                    {authMode === 'login' ? "Need an account? Sign Up" : "Have an account? Login"}
+                                </button>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            );
+        }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
